@@ -33,24 +33,33 @@ async function getAll() {
     `${rootUrl}/data/top/mktcapfull?limit=100&tsym=USD&api_key=${token}`
   );
   let coins = await response.json();
-
   const coinsData = [];
   coins.Data.forEach((element, idx) => {
     let coinInfo = element.CoinInfo;
     let raw = element.RAW;
-    let display = element.DISPLAY;
-
-    let coinObj = {
-      id: coinInfo.Id,
-      ticker: coinInfo.Name,
-      name: coinInfo.FullName,
-      curPrice: raw.USD.PRICE.toFixed(2),
-      price1PCT: raw.USD.CHANGEPCTHOUR.toFixed(2),
-      price24PCT: raw.USD.CHANGEPCT24HOUR.toFixed(2),
-    };
+    let coinObj;
+    if (raw === undefined){
+      coinObj = {
+        id: coinInfo.Id,
+        ticker: coinInfo.Name,
+        name: coinInfo.FullName,
+        curPrice: 0.00,
+        price1PCT: 0.00,
+        price24PCT: 0.00,
+      };
+    } else {
+      coinObj = {
+        id: coinInfo.Id,
+        ticker: coinInfo.Name,
+        name: coinInfo.FullName,
+        curPrice: raw.USD.PRICE.toFixed(2),
+        price1PCT: raw.USD.CHANGEPCTHOUR.toFixed(2),
+        price24PCT: raw.USD.CHANGEPCT24HOUR.toFixed(2),
+      };
+    }
+    
     coinsData.push(coinObj);
   });
-
   return coinsData;
 }
 
