@@ -1,6 +1,10 @@
 const request = require("request");
 const rootUrl = "https://min-api.cryptocompare.com";
+const coinmarketcapUrl = "https://sandbox-api.coinmarketcap.com";
+
 const token = process.env.CRYPTOCOMPARE_TOKEN;
+const coinmarketcaptoken = process.env.COINMARKETCAP_TOKEN;
+
 const fetch = require("node-fetch");
 
 module.exports = {
@@ -25,51 +29,110 @@ module.exports = {
     - RAW(OBJ) consists of raw pricing data(OBJs). Noted that these are ints.
         * .USD.PRICE / .USD.CHANGE24HOUR(usd value) / .USD.CHANGEPCT24HOUR(%)
     - DISPLAY(OBJ) consists of pricing data(OBJs) in string form. May cause issues as some have $ in them.
-        * .USD.PRICE / .USD.CHANGE24HOUR(usd value) / .USD.CHANGEPCT24HOUR(%)
+    * .USD.PRICE / .USD.CHANGE24HOUR(usd value) / .USD.CHANGEPCT24HOUR(%)
     */
+   
+   const axios = require('axios');
+   
+   const coinsData = [];
+    let response = null;
+    async function getAll() {
+      try {
+        response = await axios.get('https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest?limit=100', {
+          headers: {
+            'X-CMC_PRO_API_KEY': '2891197e-64be-4071-84b2-6c8273867a25',
+          },
+        });
+      } catch(ex) {
+        response = null;
+        // error
+        console.log(ex);
+        reject(ex);
+      }
+      if (response) {
+        // success
+        const json = response.data;
+        const quotes = json.data;
+        quotes.forEach((element, idx) => {
+          let quoteData = element.quote.USD;  
+          if (quoteData === undefined) {
+              coinObj = { 
+                  id: element.id.toString(),
+                  ticker: element.symbol,
+                  name: element.name,
+                  curPrice: 0.0,
+                  price1PCT: 0.0,
+                  price24PCT: 0.0,
+                };
+              } else {
+                  coinObj = {
+                    id: element.id.toString(),
+                    ticker: element.symbol,
+                    name: element.name,
+                    curPrice: quoteData.price.toFixed(2),
+                    price24PCT: quoteData.percent_change_24h.toFixed(2),
+                    price1PCT: quoteData.percent_change_1h.toFixed(2),
+                    };
+                  }
+                  coinsData.push(coinObj);
+                })
+                // resolve(json);
+                // console.log(coinsData)
+              }
+      return coinsData;
+    };
 
-async function getAll() {
-  let response = await fetch(
-    `${rootUrl}/data/top/mktcapfull?limit=100&tsym=USD&api_key=${token}`
-  );
-  let coins = await response.json();
-  const coinsData = [];
-  coins.Data.forEach((element, idx) => {
-    let coinInfo = element.CoinInfo;
-    let raw = element.RAW;
-    let coinObj;
-    if (raw === undefined){
-      coinObj = {
-        id: coinInfo.Id,
-        ticker: coinInfo.Name,
-        name: coinInfo.FullName,
-        curPrice: 0.00,
-        price1PCT: 0.00,
-        price24PCT: 0.00,
-      };
-    } else {
-      coinObj = {
-        id: coinInfo.Id,
-        ticker: coinInfo.Name,
-        name: coinInfo.FullName,
-        curPrice: raw.USD.PRICE.toFixed(2),
-        price1PCT: raw.USD.CHANGEPCTHOUR.toFixed(2),
-        price24PCT: raw.USD.CHANGEPCT24HOUR.toFixed(2),
-      };
-    }
+  
+
+// async function getAll() {
+//   let response = await fetch(
+//     `${rootUrl}/data/top/mktcapfull?limit=100&tsym=USD&api_key=${token}`
+//     // `${coinmarketcapUrl}/data/top/mktcapfull?limit=100&tsym=USD&api_key=${coinmarketcaptoken}`
+//   );
+//   let coins = await response.json();
+//   const coinsData = [];
+//   coins.Data.forEach((element, idx) => {
+//     let coinInfo = element.CoinInfo;
+//     let raw = element.RAW;
+//     // console.log('here is the RAW DATA')
+//     // console.log(raw)
+//     let coinObj;
+//     if (raw === undefined) {
+//       coinObj = { 
+//         id: coinInfo.Id,
+//         ticker: coinInfo.Name,
+//         name: coinInfo.FullName,
+//         curPrice: 0.0,
+//         price1PCT: 0.0,
+//         price24PCT: 0.0,
+//       };
+//     } else {
+//       coinObj = {
+//         id: coinInfo.Id,
+//         ticker: coinInfo.Name,
+//         name: coinInfo.FullName,
+//         curPrice: raw.USD.PRICE.toFixed(2),
+//         price1PCT: raw.USD.CHANGEPCTHOUR.toFixed(2),
+//         price24PCT: raw.USD.CHANGEPCT24HOUR.toFixed(2),
+//       };
+//     }
     
-    coinsData.push(coinObj);
-  });
-  return coinsData;
-}
+//     coinsData.push(coinObj);
+//   });
+//   return coinsData;
+// }
 
 async function getOne(name, fullname) {
   let response = await fetch(
     `${rootUrl}/data/pricemultifull?fsyms=${name}&tsyms=USD&api_key=${token}`
   );
   let coin = await response.json();
-  let data = coin.RAW[`${name}`].USD;
+  // console.log(response.json());
 
+  let data = coin.RAW[`${name}`].USD;
+  // console.log('here is the RAW DATA')
+  console.log(data)
+ 
   let coinData = {
     ticker: data.FROMSYMBOL,
     name: fullname,
@@ -110,6 +173,8 @@ async function getMultiple(coinArray) {
     `${rootUrl}/data/pricemulti?fsyms=${coinString}&tsyms=USD&api_key=${token}`
   );
   let coinList = await response.json();
+  console.log(response.json());
+
   let coinData = {};
   coinArray.forEach((coin) => {
     coinData[coin] = coinList[coin].USD.toFixed(2);
@@ -128,6 +193,7 @@ async function getTotal(coinObj) {
     `${rootUrl}/data/pricemulti?fsyms=${coinString}&tsyms=USD&api_key=${token}`
   );
   let coinList = await response.json();
+  console.log(response.json());
   let coinData = coinObj;
   for (i = 0; i < Object.keys(coinData).length; i++) {
     coinData[i].forEach((coin, idx) => {

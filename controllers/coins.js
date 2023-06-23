@@ -10,12 +10,14 @@ module.exports = {
 async function index(req, res, next) {
   try {
     const coins = await Coin.getAll();
-
+    // var result = res.json();
+    
+    console.log(coins)
     Portfolio.find({}, function (err, portfolios) {
       if (err) {
         return next(err);
       }
-
+      
       res.render("coins", { coins, portfolios });
     });
   } catch (err) {
